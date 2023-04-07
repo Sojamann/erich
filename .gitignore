@@ -1,0 +1,6 @@
+# directories
+dist/
+build/
+
+# python files
+*.egg-info
