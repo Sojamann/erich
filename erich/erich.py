@@ -2,8 +2,15 @@ import inspect
 from string import Formatter
 from collections import ChainMap
 from typing import List
+from operator import itemgetter
 
 class EnrichedException(Exception):
+    """Exception which wraps the actual exception which is thrown
+
+    Args:
+        Exception: Exception which is the cause of 'everything'
+    """
+
     def __init__(self, cause: Exception):
         super().__init__(cause)
         self.cause = cause
@@ -23,20 +30,42 @@ class InvalidEnrichDecoratorUsage(Exception):
     pass
 
 def fmt(template: str):
-    # filter out None (no more format fields found) but not empty strings (positional format field)
-    template_fields = [fname for _, fname, _, _ in Formatter().parse(template) if fname is not None]
-    if any(map(lambda s: s is not None and len(s) == 0 , template_fields)):
+    """ When a exception is raised, it is caught and wrapped
+    in an EnrichedException. The template is formatted using
+    the arguments of the decorated function and will be printed
+    alongside the actual exception which was caught
+
+    Args:
+        template (str): The template string which will be formatted
+        using the paramteres of the decorated
+        function
+
+    Raises:
+        InvalidEnrichDecoratorUsage: when the template string contains
+                                     fields which are not part of 
+                                     the decorated function's signature
+        ex: EnrichedException which just wraps the actual exception
+            which was raised
+
+    Returns:
+        any: whatever the decorated function returns
+    """
+
+    # filter out None (no more format fields found)
+    # but not empty strings (positional format field)
+    tpl_fields = list(filter(None, map(itemgetter(1), Formatter().parse(template))))
+    if any(map(lambda s: s is not None and len(s) == 0 , tpl_fields)):
         raise InvalidEnrichDecoratorUsage(
             f"Template contains positional format placeholders. "
             f"This is not allowed: '{template}'"
         )
 
     def _inner(fn):
-        spec = inspect.signature(fn)
+        signature = inspect.signature(fn)
         # validate that all args are actually part of the function signature
 
-        for field in template_fields:
-            if field not in spec.parameters:
+        for field in tpl_fields:
+            if field not in signature.parameters:
                 raise InvalidEnrichDecoratorUsage(
                     f"template field {field} not in fn signature: {fn.__qualname__}"
                 )
@@ -45,7 +74,7 @@ def fmt(template: str):
             try:
                 return fn(*call_args, **call_kwargs)
             except Exception as ex:
-                bound = spec.bind(*call_args, **call_kwargs)
+                bound = signature.bind(*call_args, **call_kwargs)
                 bound.apply_defaults()
 
                 if not isinstance(ex, EnrichedException):
@@ -65,7 +94,27 @@ def fmt(template: str):
     return _inner
 
 
-def with_args(*args: List[str]):
+def signature(*args: List[str]):
+    """ When a exception is raised, it is caught and wrapped
+    in an EnrichedException. The exception message will contain
+    the signature of the decorated function and printed
+    alongside the actual exception which was caught
+
+    Args:
+        args (List[str]): the parameters which should be printed
+                          as signature instead of the full function
+                          signature of the decorated function 
+
+    Raises:
+        InvalidEnrichDecoratorUsage: args contains paramters which
+                                     which are not part of 
+                                     the decorated function's signature
+        ex: EnrichedException which just wraps the actual exception
+            which was raised
+
+    Returns:
+        any: whatever the decorated function returns
+    """
     def _inner(fn):
         spec = inspect.signature(fn)
         # validate that all args are actually part of the function signature
@@ -99,7 +148,20 @@ def with_args(*args: List[str]):
         return _handler
     return _inner
 
-def with_fn_name():
+def fname():
+    """ When a exception is raised, it is caught and wrapped
+    in an EnrichedException. The exception message will contain
+    the name  of the decorated function and printed
+    alongside the actual exception which was caught
+
+    Raises:
+        ex: EnrichedException which just wraps the actual exception
+            which was raised
+
+    Returns:
+        any: whatever the decorated function returns
+    """
+
     def _inner(fn):
         def _handler(*call_args, **call_kwargs):
             try:

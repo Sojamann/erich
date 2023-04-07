@@ -19,7 +19,7 @@ def start_task(name: str, prio: int, fn: Callable, desc: str = None):
 
 # Print that this function has been called but only include the prio
 # in the output
-@erich.with_args("prio")
+@erich.signature("prio")
 def schedule(prio: int, fn: Callable):
     can_schedule(prio)
     fn()
