@@ -1,4 +1,6 @@
 import inspect
+import functools
+
 from string import Formatter
 from collections import ChainMap
 from typing import List
@@ -70,7 +72,8 @@ def fmt(template: str):
                     f"template field {field} not in fn signature: {fn.__qualname__}"
                 )
 
-        def _handler(*call_args, **call_kwargs):
+        @functools.wraps(fn)
+        def _wrapper(*call_args, **call_kwargs):
             try:
                 return fn(*call_args, **call_kwargs)
             except Exception as ex:
@@ -90,7 +93,7 @@ def fmt(template: str):
                 # "during handling of exception .. another one occured"
                 raise ex from ex
 
-        return _handler
+        return _wrapper
     return _inner
 
 
@@ -124,7 +127,8 @@ def signature(*args: List[str]):
                     f"arg {arg} not in fn signature: {fn.__qualname__}"
                 )
 
-        def _handler(*call_args, **call_kwargs):
+        @functools.wraps(fn)
+        def _wrapper(*call_args, **call_kwargs):
             try:
                 return fn(*call_args, **call_kwargs)
             except Exception as ex:
@@ -145,7 +149,7 @@ def signature(*args: List[str]):
                 # "during handling of exception .. another one occured"
                 raise ex from ex
 
-        return _handler
+        return _wrapper
     return _inner
 
 def fname():
@@ -163,7 +167,8 @@ def fname():
     """
 
     def _inner(fn):
-        def _handler(*call_args, **call_kwargs):
+        @functools.wraps(fn)
+        def _wrapper(*call_args, **call_kwargs):
             try:
                 return fn(*call_args, **call_kwargs)
             except Exception as ex:
@@ -176,5 +181,5 @@ def fname():
                 # "during handling of exception .. another one occured"
                 raise ex from ex
 
-        return _handler
+        return _wrapper
     return _inner
